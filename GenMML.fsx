@@ -7,8 +7,7 @@ open TypedFun
 
 
 let genCstI =
-    gen { let! a = Gen.choose (-100,100)
-          return CstI a }
+    gen { return! Gen.map CstI (Gen.choose (-100,100)) }
 
 let genCstB = Gen.elements [CstB true; CstB false]
 
@@ -16,25 +15,32 @@ let genCstB = Gen.elements [CstB true; CstB false]
 type genenv = Map<typ, string list>
 let emptyGenenv = Map.empty
 
-// todo: substitute option pattern matching with default
+// TODO: substitute option pattern matching with default
 let addenv (addtyp: typ) (name: string) (env: genenv) : genenv =
     match Map.tryFind addtyp env with
     | Some l -> Map.add addtyp (name :: l) env
     | None -> Map.add addtyp [name] env
 
-// todo: generalize function for both types (?)
+// TODO: convert to map
+type funOfArgType = { tyB: string list; tyI: string list }
+// returns a record of function name lists of the desired type present in env, relatively to their argument type. If no such functions are present, the record field will contain the empty list.
+let listTypeFun (lookTyp: typ) (env: genenv) =
+    {tyB = (defaultArg (Map.tryFind (TypF (TypB, lookTyp)) env ) []); tyI = (defaultArg (Map.tryFind (TypF (TypI, lookTyp)) env ) [])}
+
+// TODO: generalize function for both types (?)
 let rec genZeroB env =
     match Map.tryFind TypB env with
     | None -> genCstB
-    | Some l -> if List.length l = 0 then failwith "invalid genenv" else Gen.frequency [(1, genCstB); (2, Gen.map Var (Gen.elements l))]
+    | Some l -> if List.length l = 0 then failwith "invalid genenv" else Gen.frequency [(1, genCstB); (3, Gen.map Var (Gen.elements l))]
 
-// todo: genI
-// todo: make genI and genB one parameterized function
-// todo: ns before specific gen call
+// TODO: genI
+// TODO: make genI and genB one parameterized function
+// TODO: ns before specific gen call
 // let cleanup (avoid unnecessary lets)
 let rec genI (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> = gen { return CstI 42 }
 
 let rec genB (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
+    // TODO: useful?
     let genPrimB (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
         let genAnd (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
             let ns = s-1
@@ -83,10 +89,19 @@ let rec genB (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
               let! e1 = (if funTypeIn = TypB then genB else genI) newEnvVar nn m s1
               let! e2 = (if funTypeOut = TypB then genB else genI) newEnvFun n nm s2
               return Letfun (funName, varName, funTypeIn, e1, funTypeOut, e2) }
+    // note: no function recursion allowed
+    let genCall (funs: funOfArgType) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
+        let ns = s-1
+        gen { let! funType = Gen.frequency [(List.length funs.tyB, gen { return TypB }); (List.length funs.tyI, gen { return TypI })]
+              let! funName = Gen.elements (if funType=TypB then funs.tyB else funs.tyI)
+              let! e = (if funType=TypB then genB else genI) env n m ns
+              return Call (Var funName, e) }
     match s with
     | 0 -> genZeroB env
-    // | m when m>0 -> Gen.frequency [(3, genPrimB env n s); (1, genLetVar env n s); (1, genIfElse env n s)]
-    | z when z>0 -> Gen.frequency [(1, genPrimB env n m s); (1, genLetVar env n m s); (1, genIfElse env n m s); (1, genFun env n m s)]
+    | z when z>0 ->
+           let funs = listTypeFun TypB env
+           let gens = [(1, genPrimB env n m s); (1, genLetVar env n m s); (1, genIfElse env n m s); (1, genFun env n m s)]
+           Gen.frequency (if List.length funs.tyB + List.length funs.tyI <> 0 then (2, genCall funs env n m s) :: gens else gens)
     | _ -> failwith "invalid size"
 
 let gen =
