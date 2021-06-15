@@ -28,7 +28,7 @@ let funsToType (lookTyp: typ) (env: genenv) =
 
 // TODO: ns before specific gen call
 // TODO: let cleanup (avoid unnecessary lets)
-let gen =
+let gen : Gen<tyexpr> =
     let rec genT (ty: typ) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
         let genCst (ty: typ) : Gen<tyexpr> =
             match ty with
@@ -104,7 +104,9 @@ let gen =
                let gens = [(1, genPrimB env n m s); (1, genLetVar env n m s); (1, genIfElse env n m s); (1, genFun env n m s)]
                Gen.frequency (if thereAreFuns then (2, genCall funs env n m s) :: gens else gens)
         | _ -> failwith "invalid size"
-    Gen.sized (genT TypB emptyGenenv 0 0)
+    // gen { let! genType = Gen.elements [TypB; TypI]
+    gen { let! genType = Gen.elements [TypB]
+          return! Gen.sized (genT genType emptyGenenv 0 0) }
 
 let go n = gen |> Gen.sample n 1
 let gogo n = let a = go n in List.zip a (List.map (fun l -> eval l []) a)
