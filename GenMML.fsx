@@ -38,7 +38,7 @@ let gen : Gen<tyexpr> =
         let rec genZero (ty: typ) env =
             match Map.tryFind ty env with
             | None -> genCst ty
-            | Some l -> if List.length l = 0 then failwith "invalid genenv" else Gen.frequency [(1, genCst ty); (4, Gen.map Var (Gen.elements l))]
+            | Some l -> if List.length l = 0 then failwith "invalid genenv" else Gen.frequency [(1, genCst ty); (3, Gen.map Var (Gen.elements l))]
         let genPrim (ty: typ) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
             let genAPrim (a1T: typ, a2T: typ) (op: string) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
                 gen { let! s1 = Gen.choose (0, s)
@@ -69,7 +69,7 @@ let gen : Gen<tyexpr> =
                   let! e2 = genT ty env n m s2
                   let! e3 = genT ty env n m s3
                   return If (e1, e2, e3) }
-        let genFun (ty: typ) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
+        let genLetFun (ty: typ) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
             gen { let! s1 = Gen.choose (0, s)
                   let s2 = s - s1
                   let! funTypeIn = Gen.elements [TypI; TypB]
@@ -80,7 +80,7 @@ let gen : Gen<tyexpr> =
                   let varName = "v" + string nn
                   let newEnvVar = addenv funTypeIn varName env
                   let newEnvFun = addenv (TypF (funTypeIn, funTypeOut)) funName env
-                  let! e1 = genT funTypeIn newEnvVar nn nm s1
+                  let! e1 = genT funTypeOut newEnvVar nn nm s1
                   let! e2 = genT ty newEnvFun n nm s2
                   return Letfun (funName, varName, funTypeIn, e1, funTypeOut, e2) }
         // note: no function recursion allowed
@@ -93,9 +93,9 @@ let gen : Gen<tyexpr> =
         | 0 -> genZero ty env
         | z when z>0 ->
             if ty<>TypB && ty<>TypI then failwith "cannot generate such type" else
-               let gens_0 = [(2, genPrim ty); (1, genLetVar ty); (1, genIfElse ty); (1, genFun ty)]
+               let gens_0 = [(2, genPrim ty); (1, genLetVar ty); (1, genIfElse ty); (1, genLetFun ty)]
                let (funs, thereAreFuns) = funsToType ty env
-               let gens = if thereAreFuns then (4, genCall funs) :: gens_0 else gens_0
+               let gens = if thereAreFuns then (5, genCall funs) :: gens_0 else gens_0
                Gen.frequency (gens |> List.map (fun (w, ge) -> (w, ge env n m (s-1))))
         | _ -> failwith "invalid size"
     gen { let! genType = Gen.elements [TypB; TypI]
