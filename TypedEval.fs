@@ -40,42 +40,53 @@ type tyexpr =
 
 (* A runtime value is an integer or a function closure *)
 
+// === SGORBLEX ===
+// Added bool type
 type value = 
   | Int of int
+  | Bool of bool
   | Closure of string * string * tyexpr * value env       (* (f, x, fBody, fDeclEnv) *)
 
 // === SGORBLEX ===
 // The interpreter is now well typed. It now returns the evaluated expression with the correct type syntax.
 // This will be used in checking the interpreter's type preservation
-let rec eval (e : tyexpr) (env : value env) : int =
+let rec eval (e : tyexpr) (env : value env) : tyexpr =
     match e with
     | CstI i -> CstI i
     | CstB b -> CstB b
     // TODO
     | Var x  ->
       match lookup env x with
-      | Int i -> i 
+      | Int i -> CstI i
+      | Bool b -> CstB b
       | _     -> failwith "eval Var"
-    | Prim("*", e1, e2) -> 
-      let (CstI i1, CstI i2) = eval e1 env, eval e2 env in CstI i1 * i2
-    | Prim("+", e1, e2) -> 
-      let (CstI i1, CstI i2) = eval e1 env, eval e2 env in CstI i1 + i2
-    | Prim("-", e1, e2) -> 
-      let (CstI i1, CstI i2) = eval e1 env, eval e2 env in CstI i1 - i2
-    | Prim("=", e1, e2) -> 
-      let (CstI i1, CstI i2) = eval e1 env, eval e2 env in CstB i1 = i2
-    | Prim("<", e1, e2) -> 
-      let (CstI i1, CstI i2) = eval e1 env, eval e2 env in CstB i1 < i2
-    | Prim("&", e1, e2) -> 
-      let (CstB i1, CstB i2) = eval e1 env, eval e2 env in CstB i1 && i2
-    | Prim _            -> failwith "unknown primitive"
+    | Prim(op, e1, e2) -> 
+        match eval e1 env, eval e2 env with
+        | (CstI i1, CstI i2) ->
+            match op with
+            | "*" -> CstI (i1 * i2)
+            | "+" -> CstI (i1 + i2)
+            | "-" -> CstI (i1 - i2)
+            | "=" -> CstB (i1 = i2)
+            | "<" -> CstB (i1 < i2)
+            | _ -> failwith "incorrect primitive"
+        | (CstB i1, CstB i2) ->
+            match op with
+            | "&" -> CstB (i1 && i2)
+            | _ -> failwith "incorrect primitive"
+        | _ -> failwith "incorrect primitive"
     | Let(x, eRhs, letBody) -> 
-      let xVal = Int(eval eRhs env)
+      let xVal = match eval eRhs env with
+                  | CstI i -> Int i
+                  | CstB b -> Bool b
+                  | _ -> failwith "assertion error"
       let bodyEnv = (x, xVal) :: env 
       eval letBody bodyEnv
     | If(e1, e2, e3) -> 
-      let b = eval e1 env
-      if b<>0 then eval e2 env else eval e3 env
+      let b = match eval e1 env with
+                | CstB x -> x
+                | _ -> failwith "non boolean condition in if-else statement"
+      if b then eval e2 env else eval e3 env
     | Letfun(f, x, _, fBody, _, letBody) -> 
       let bodyEnv = (f, Closure(f, x, fBody, env)) :: env 
       eval letBody bodyEnv
@@ -83,7 +94,10 @@ let rec eval (e : tyexpr) (env : value env) : int =
       let fClosure = lookup env f
       match fClosure with
       | Closure (f, x, fBody, fDeclEnv) ->
-        let xVal = Int(eval eArg env)
+        let xVal = match eval eArg env with
+                    | CstI i -> Int i
+                    | CstB b -> Bool b
+                    | _ -> failwith "assertion error"
         let fBodyEnv = (x, xVal) :: (f, fClosure) :: fDeclEnv
         eval fBody fBodyEnv
       | _ -> failwith "eval Call: not a function"

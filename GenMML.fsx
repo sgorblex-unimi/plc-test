@@ -2,7 +2,7 @@ module GenMML
 
 #r "FsCheck.dll"
 open FsCheck
-open TypedFun
+open TypedEval
 
 
 
@@ -101,5 +101,10 @@ let gen : Gen<tyexpr> =
     gen { let! genType = Gen.elements [TypB; TypI]
           return! Gen.sized (genT genType emptyGenenv 0 0) }
 
-let go n = gen |> Gen.sample n 1
-let gogo n = let a = go n in List.zip a (List.map (fun l -> eval l []) a)
+let go n = gen |> Gen.sample n 1 |> List.head
+let gogo n =
+    let expr = go n
+    (expr, eval expr [], typeCheck expr)
+let pres n =
+    let expr = go n
+    typeCheck expr = typeCheck (eval expr [])
