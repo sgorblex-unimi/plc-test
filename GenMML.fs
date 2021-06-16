@@ -1,6 +1,5 @@
 module GenMML
 
-#r "FsCheck.dll"
 open FsCheck
 open TypedEval
 
@@ -101,10 +100,17 @@ let gen : Gen<tyexpr> =
     gen { let! genType = Gen.elements [TypB; TypI]
           return! Gen.sized (genT genType emptyGenenv 0 0) }
 
-let go n = gen |> Gen.sample n 1 |> List.head
-let gogo n =
-    let expr = go n
-    (expr, eval expr [], typeCheck expr)
-let pres n =
-    let expr = go n
+
+let typePreservation expr =
     typeCheck expr = typeCheck (eval expr [])
+
+type MMLGens =
+    static member tyexpr() =
+        { new Arbitrary<tyexpr>() with
+            override x.Generator = gen
+            override x.Shrinker t = Seq.empty }
+
+Arb.register<MMLGens>() |> ignore
+
+let config = { Config.Quick with MaxTest = 10000 }
+let test() = Check.One (config, typePreservation)
