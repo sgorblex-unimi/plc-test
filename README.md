@@ -16,7 +16,8 @@ Our intention is to apply PBT to the abstract syntax interpreter in order to be 
 
 Unfortunately, the interpreter contained in the [TypedFun](https://www.itu.dk/people/sestoft/plc/typedfun.zip) module is not type preserving, since its output is an `int` in each and every case:
 ```fsharp
-let rec eval (e : tyexpr) (env : value env) : int = ...
+let rec eval (e : tyexpr) (env : value env) : int =
+// ...
 ```
 The falseness of the thesis can in fact be proved with ease with the following counterexample:
 ```fsharp
@@ -24,9 +25,10 @@ The falseness of the thesis can in fact be proved with ease with the following c
 val e : int = 1
 ```
 
-What we can do, however, is create an upgraded version of the interpreter, which has a tyexpr as both input and output, and evaluates to typed constants:
+What we can do, however, is create an upgraded version of the interpreter, which has a `tyexpr` as both input and output, and evaluates to typed constants:
 ```fsharp
-let rec eval (e : tyexpr) (env : value env) : (e : tyexpr) = ...
+let rec eval (e : tyexpr) (env : value env) : tyexpr =
+// ...
 ```
 We can then use the same type evaluator provided by the book to check for a certain expression if the evaluated type is equal to the non-evaluated one.
 
@@ -34,7 +36,7 @@ Said typed interpreter can be found in `TypedEval.fs`.
 
 
 ### Generator
-The file `GenMML.fs` contains a custom `typexpr` generator. This generator generates _sound_ Micro-ML programs of a given [size](https://fscheck.github.io/FsCheck//TestData.html#The-size-of-test-data), meaning that all generated programs are able to be evaluated with no errors. The generator is also _complete_, meaning that all possible programs can be generated with non-zero probability, with some exceptions:
+The file `GenMML.fs` contains a custom `tyexpr` generator. This generator generates _sound_ Micro-ML programs of a given [size](https://fscheck.github.io/FsCheck//TestData.html#The-size-of-test-data), meaning that all generated programs are able to be evaluated with no errors. The generator is also _complete_, meaning that all possible programs can be generated with non-zero probability, with some exceptions:
 - integer constants are chosen in a range of -100 to 100. Not only there is no need to generate programs with huge numbers (which can still be built from smaller ones), but we also don't want the integer constant generator to be affected by the program's size and therefore by the depth of the AST (Abstract Syntax Tree) node in which the constant will appear;
 - function and variable names are generated as "fx" and "vx" respectively, where x is a serial number, growing with each nested declaration. This is acceptable as different variable or function names do not affect the interpretation of the program and it improves readability and at the same time avoids ambiguous variable names (numbers or whitespaces);
 - recursive functions cannot be generated, as the function declaration environment doesn't contain the name of the function itself. This choice is due to the possibility of infinite recursion and has therefore been avoided.
