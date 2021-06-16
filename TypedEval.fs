@@ -48,13 +48,13 @@ type value =
   | Closure of string * string * tyexpr * value env       (* (f, x, fBody, fDeclEnv) *)
 
 // === SGORBLEX ===
-// The interpreter is now well typed. It now returns the evaluated expression with the correct type syntax.
-// This will be used in checking the interpreter's type preservation
+// The interpreter is now well typed. It now returns the evaluated
+// expression with the correct type syntax. This will be used in
+// checking the interpreter's type preservation.
 let rec eval (e : tyexpr) (env : value env) : tyexpr =
     match e with
     | CstI i -> CstI i
     | CstB b -> CstB b
-    // TODO
     | Var x  ->
       match lookup env x with
       | Int i -> CstI i
