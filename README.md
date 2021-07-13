@@ -45,11 +45,13 @@ With said exceptions, the generator is _sound_ and _complete_, meaning it is _co
 
 
 ### Testing
-The file `GenMML.fs` overrides the default generator for `tyexpr`s and configures in the `config` variable a test of 10000 growing Micro-ML programs. The predicate `typePreservation` receives the generated program and checks type preservation, i.e. it determines the type of the program, then it evaluates it and checks if the type of the evaluated constant is equal to the predetermined type.
+The file `GenMML.fs` overrides the default generator for `tyexpr`s and configures in the `config` variable a test of 10000 growing Micro-ML programs. The predicate `sound` checks the soundness of the generated expressions, that is, if it is well typed (`TypI` or `TypB`). The predicate `typePreservation` receives the generated program and checks type preservation, i.e. it determines the type of the program, then it evaluates it and checks if the type of the evaluated constant is equal to the predetermined type.
 
-The function `test()` is just a shortcut for launching a type preservation test:
+The functions `testSound()` and `testPres()` check soundness and type preservation respectively, on a sample of 10000 generated expressions. The function `test()` tests type preservation, using soundness as a trivial filter:
 ```fsharp
-let test() = Check.One (config, typePreservation)
+let testSound() = Check.One (config, sound)
+let testPres() = Check.One (config, typePreservation)
+let test() = Check.One (config, typePresTrivial)
 ```
 
 
