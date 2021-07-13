@@ -1,10 +1,30 @@
 (*
+Copyright (C) 2021 Alessandro Clerici Lorenzini.
+
+This file is part of plc-test.
+
+plc-test is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+plc-test is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with plc-test.  If not, see <https://www.gnu.org/licenses/>.
+*)
+
+(*
 This file was modified from the textbook files of Programming Language Concepts by Peter Sestoft.
 You can find the original, as well as the entire file library of the book, at
 https://www.itu.dk/people/sestoft/plc
 
 My changes will be labeled by "// === SGORBLEX ==="
 *)
+
 
 
 module TypedEval
