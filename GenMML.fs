@@ -25,7 +25,6 @@ let funsToType (lookTyp: typ) (env: genenv) =
     if List.length b <> 0 || List.length i <> 0 then ((Map.empty |> Map.add TypB b |> Map.add TypI i), true) else (Map.empty, false)
 
 
-// TODO: let cleanup (avoid unnecessary lets)
 let gen : Gen<tyexpr> =
     let rec genT (ty: typ) (env: genenv) (n: int) (m: int) (s: int) : Gen<tyexpr> =
         let genCst (ty: typ) : Gen<tyexpr> =
@@ -33,7 +32,6 @@ let gen : Gen<tyexpr> =
             | TypI -> Gen.map CstI (Gen.choose (-100,100))
             | TypB -> Gen.map CstB Arb.generate<bool>
             | _ -> failwith "cannot generate a constant of this type"
-        // to be removed
         let rec genZero (ty: typ) env =
             match Map.tryFind ty env with
             | None -> genCst ty
@@ -104,6 +102,13 @@ let gen : Gen<tyexpr> =
 let typePreservation expr =
     typeCheck expr = typeCheck (eval expr [])
 
+let sound expr =
+    let t = typeCheck expr
+    t = TypI || t = TypB
+
+let typePresTrivial expr =
+    (typeCheck expr = typeCheck (eval expr [])) |> Prop.trivial (not (sound expr))
+
 type MMLGens =
     static member tyexpr() =
         { new Arbitrary<tyexpr>() with
@@ -113,4 +118,7 @@ type MMLGens =
 Arb.register<MMLGens>() |> ignore
 
 let config = { Config.Quick with MaxTest = 10000 }
-let test() = Check.One (config, typePreservation)
+
+let testSound() = Check.One (config, sound)
+let testPres() = Check.One (config, typePreservation)
+let test() = Check.One (config, typePresTrivial)
